@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TFJS Visor Chart</title>
+    <link rel="stylesheet" href="./style.css" />
+
+    <!-- TFJS + TFJS-VIS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-vis@latest"></script>
+
+    <!-- Your script -->
+    <script src="./script.js" defer></script>
+  </head>
+
+  <body>
+    <main class="container">
+      <h1>TFJS Visor Chart</h1>
+      <p class="sub">
+        Fetches users from <code>jsonplaceholder.typicode.com/users</code>,
+        transforms data, and plots with tfjs-vis.
+      </p>
+
+      <section class="card">
+        <h2>1) Multiply function</h2>
+        <p id="multiplyResult">Loading multiply result...</p>
+      </section>
+
+      <section class="card">
+        <h2>2) Remote API call and unique transform</h2>
+
+        <label for="metric">Metric (what to measure)</label>
+        <select id="metric">
+          <option value="companyNameLength">Company name length</option>
+          <option value="usernameLength">Username length</option>
+          <option value="emailLength">Email length</option>
+        </select>
+
+        <button id="plotBtn" type="button">Plot chart</button>
+
+        <p id="status" class="status">Ready.</p>
+      </section>
+    </main>
+  </body>
+</html>
