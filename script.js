@@ -1,9 +1,9 @@
-// PROOF it loads
-console.log("script.js loaded");
+// script.js
+// TFJS Visor Chart: multiply function + fetch users + transform + plot with tfjs-vis
 
-// =====================
+// ---------------------------
 // 1) Multiply function
-// =====================
+// ---------------------------
 function multiplyAll(...args) {
   if (args.length === 0) return 0;
 
@@ -15,8 +15,11 @@ function multiplyAll(...args) {
   }, 1);
 }
 
+// Show multiply result
 (function showMultiplyResult() {
   const el = document.getElementById("multiplyResult");
+  if (!el) return;
+
   try {
     el.textContent = `multiplyAll(2, 3, 4, 5) = ${multiplyAll(2, 3, 4, 5)}`;
   } catch (e) {
@@ -24,9 +27,9 @@ function multiplyAll(...args) {
   }
 })();
 
-// =====================
+// ---------------------------
 // 2) Remote API call
-// =====================
+// ---------------------------
 async function fetchUsers() {
   const url = "https://jsonplaceholder.typicode.com/users";
   const response = await fetch(url);
@@ -38,83 +41,79 @@ async function fetchUsers() {
   return response.json();
 }
 
-// =====================
-// 3) Transform data (unique)
-// =====================
-// We create a derived metric that is not directly given:
-// e.g. company name length, username length, email length
-function transformUsers(users, metric) {
-  return users.map((u) => {
-    const companyName = u.company?.name ?? "";
-    const username = u.username ?? "";
-    const email = u.email ?? "";
+// ---------------------------
+// 3) Unique transform (metric options)
+// ---------------------------
+function computeMetricValue(user, metric) {
+  switch (metric) {
+    case "companyNameLength":
+      return user.company?.name ? user.company.name.length : 0;
 
-    if (metric === "companyNameLength") return { label: u.name, value: companyName.length };
-    if (metric === "usernameLength") return { label: u.name, value: username.length };
-    if (metric === "emailLength") return { label: u.name, value: email.length };
+    case "usernameLength":
+      return user.username ? user.username.length : 0;
 
-    return { label: u.name, value: 0 };
-  });
-}
+    case "cityNameLength":
+      return user.address?.city ? user.address.city.length : 0;
 
-// =====================
-// 4) Plot with tfjs-vis
-// =====================
-function plotBarChart(items, metricLabel) {
-  const values = items.map((x) => x.value);
-  const labels = items.map((x) => x.label);
-
-  const data = {
-    values: [values],
-    series: [metricLabel],
-  };
-
-  const surface = tfvis.visor().surface({ name: "Users Metric Chart", tab: "Charts" });
-
-  tfvis.render.barchart(surface, data, {
-    xLabel: "Users",
-    yLabel: metricLabel,
-    width: 900,
-    height: 450,
-  });
-
-  // Also show a small table in the visor
-  const tableSurface = tfvis.visor().surface({ name: "Transformed Data Table", tab: "Charts" });
-  tfvis.render.table(
-    tableSurface,
-    items.map((x) => ({ user: x.label, value: x.value }))
-  );
-}
-
-// =====================
-// UI Wiring
-// =====================
-const metricSelect = document.getElementById("metric");
-const plotBtn = document.getElementById("plotBtn");
-const statusEl = document.getElementById("status");
-
-plotBtn.addEventListener("click", async () => {
-  try {
-    statusEl.textContent = "Fetching users...";
-    const users = await fetchUsers();
-
-    const metric = metricSelect.value;
-    const metricLabel =
-      metric === "companyNameLength"
-        ? "Company name length"
-        : metric === "usernameLength"
-        ? "Username length"
-        : "Email length";
-
-    statusEl.textContent = "Transforming data...";
-    const transformed = transformUsers(users, metric);
-
-    statusEl.textContent = "Plotting chart (open TFJS Visor)...";
-    plotBarChart(transformed, metricLabel);
-
-    statusEl.textContent = "Done. Open the TFJS Visor (bottom right) to see the chart.";
-  } catch (e) {
-    console.error(e);
-    statusEl.textContent = `Error: ${e.message}`;
+    default:
+      return 0;
   }
-});
+}
+
+// Convert users -> tfjs-vis barchart data
+function toBarChartData(users, metric) {
+  // tfjs-vis barchart expects: [{ index: "label", value: number }, ...]
+  return users.map((u) => ({
+    index: u.name,
+    value: computeMetricValue(u, metric),
+  }));
+}
+
+// ---------------------------
+// 4) Plot with tfjs-vis
+// ---------------------------
+async function plotSelectedMetric() {
+  const statusEl = document.getElementById("status");
+  const metricSelect = document.getElementById("metric");
+
+  // Clear status
+  if (statusEl) statusEl.textContent = "";
+
+  try {
+    const metric = metricSelect ? metricSelect.value : "companyNameLength";
+
+    const users = await fetchUsers();
+    const chartData = toBarChartData(users, metric);
+
+    const surface = { name: "Users Metric Chart", tab: "Charts" };
+
+    // Wipe any previous renders on the same surface
+    tfvis.visor().close();
+    tfvis.visor().open();
+
+    tfvis.render.barchart(surface, chartData, {
+      xLabel: "User",
+      yLabel:
+        metric === "companyNameLength"
+          ? "Company name length"
+          : metric === "usernameLength"
+          ? "Username length"
+          : "City name length",
+      height: 420,
+    });
+  } catch (err) {
+    if (statusEl) statusEl.textContent = `Error: ${err.message}`;
+    // Also log for debugging
+    console.error(err);
+  }
+}
+
+// ---------------------------
+// 5) Wire up button
+// ---------------------------
+(function init() {
+  const btn = document.getElementById("plotBtn");
+  if (btn) {
+    btn.addEventListener("click", plotSelectedMetric);
+  }
+})();
